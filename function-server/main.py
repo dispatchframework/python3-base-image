@@ -31,8 +31,12 @@ def exec_function(req, res):
     stderr = io.StringIO()
     old_stderr = sys.stderr
 
+    stdout = io.StringIO()
+    old_stdout = sys.stdout
+
     try:
         sys.stderr = stderr
+        sys.stdout = stdout
         r = handler.handle(msg['context'], msg['payload'])
     except Exception as e:
         err = e
@@ -40,7 +44,10 @@ def exec_function(req, res):
         sys.stderr = old_stderr
         stderr.flush()
 
-    res.body = json.dumps({'context': {'error': err, 'logs': read_logs(stderr)}, 'payload': r}, ensure_ascii=False)
+        sys.stdout = old_stdout
+        stdout.flush()
+
+    res.body = json.dumps({'context': {'error': err, 'logs': {'stdout': read_logs(stdout), 'stderr': read_logs(stderr)}}, 'payload': r}, ensure_ascii=False)
 
 
 def signal_handler(signum, frame):
