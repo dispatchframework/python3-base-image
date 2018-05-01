@@ -1,7 +1,7 @@
 # python3-base-image
 Python 3 language support for Dispatch
 
-Latest image [on Docker Hub](https://hub.docker.com/r/dispatchframework/python3-base/): `dispatchframework/python3-base:0.0.3`
+Latest image [on Docker Hub](https://hub.docker.com/r/dispatchframework/python3-base/): `dispatchframework/python3-base:0.0.4`
 
 ## Usage
 
@@ -11,7 +11,7 @@ You need a recent version of Dispatch [installed in your Kubernetes cluster, Dis
 
 To add the base-image to Dispatch:
 ```bash
-$ dispatch create base-image python3-base dispatchframework/python3-base:0.0.3
+$ dispatch create base-image python3-base dispatchframework/python3-base:0.0.4
 ```
 
 Make sure the base-image status is `READY` (it normally goes from `INITIALIZED` to `READY`):
