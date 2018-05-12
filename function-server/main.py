@@ -1,21 +1,20 @@
+import importlib
+import io
 import json
-import traceback
+import os
 import signal
 import sys
-import io
+import traceback
 
 import falcon
 import waitress
-
-from function import handler
-
 
 INPUT_ERROR = 'InputError'
 FUNCTION_ERROR = 'FunctionError'
 SYSTEM_ERROR = 'SystemError'
 
 
-class Health(object):
+class Health:
     @staticmethod
     def on_get(req, res):
         res.body = '{}'
@@ -61,22 +60,47 @@ def process_msg(msg, handle):
         sys.stdout = old_stdout
         stdout.flush()
 
-    return json.dumps({'context': {'error': err, 'logs': {'stdout': read_logs(stdout), 'stderr': read_logs(stderr) + stacktrace}}, 'payload': r}, ensure_ascii=False)
+    return json.dumps(
+        {'context': {'error': err,
+                     'logs': {'stdout': read_logs(stdout),
+                              'stderr': read_logs(stderr) + stacktrace}},
+         'payload': r},
+        ensure_ascii=False)
 
 
-def process_req(req):
+def process_req(req, f):
     try:
         msg = get_msg(req)
     except Exception as e:
         stacktrace = traceback.format_exc().splitlines()
         err = {'type': SYSTEM_ERROR, 'message': str(e), 'stacktrace': stacktrace}
-        return json.dumps({'context': {'error': err, 'logs': {'stdout': [], 'stderr': stacktrace}}, 'payload': None}, ensure_ascii=False)
+        return json.dumps({'context': {'error': err,
+                                       'logs': {'stdout': [],
+                                                'stderr': stacktrace}},
+                           'payload': None},
+                          ensure_ascii=False)
 
-    return process_msg(msg, handler.handle)
+    return process_msg(msg, f)
 
 
-def exec_function(req, res):
-    res.body = process_req(req)
+def module_and_name(s):
+    return s.rsplit('.', 1)
+
+
+def import_function(wd, func_fqn):
+    sys.path.insert(0, wd)
+
+    [mod_name, func_name] = module_and_name(func_fqn)
+    module = importlib.import_module(mod_name)
+
+    return getattr(module, func_name)
+
+
+def exec_function(f):
+    def handler(req, res):
+        res.body = process_req(req, f)
+
+    return handler
 
 
 def signal_handler(signum, frame):
@@ -87,11 +111,13 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
+    f = import_function(os.getcwd(), os.environ.get('HANDLER'))
+
     app = falcon.API()
     app.add_route('/healthz', Health())
-    app.add_sink(exec_function, '/')
+    app.add_sink(exec_function(f), '/')
 
-    waitress.serve(app, threads=1)
+    waitress.serve(app, threads=1, port=os.environ.get('PORT'))
 
 
 if __name__ == "__main__":

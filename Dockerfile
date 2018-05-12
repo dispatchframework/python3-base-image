@@ -1,6 +1,6 @@
-FROM vmware/photon2:20180302
+FROM vmware/photon2:20180424
 
-RUN tdnf install -y python3-3.6.1-9.ph2 python3-pip-3.6.1-9.ph2 && pip3 install --upgrade pip setuptools
+RUN tdnf install -y python3-3.6.5-1.ph2 python3-pip-3.6.5-1.ph2 && pip3 install --upgrade pip setuptools
 
 ARG IMAGE_TEMPLATE=/image-template
 ARG FUNCTION_TEMPLATE=/function-template
@@ -11,12 +11,16 @@ LABEL io.dispatchframework.imageTemplate="${IMAGE_TEMPLATE}" \
 COPY image-template ${IMAGE_TEMPLATE}/
 COPY function-template ${FUNCTION_TEMPLATE}/
 
-ENV FUNCTION_MODULE=/function-server/function/handler.py PORT=8080
-EXPOSE ${PORT}
-
 COPY function-server /function-server/
+RUN pip install -r /function-server/requirements.txt
 
-WORKDIR /function-server
-RUN pip install -r requirements.txt
 
-CMD ["python3", "main.py"]
+## Set WORKDIR and PORT, expose $PORT, cd to $WORKDIR
+
+ENV WORKDIR=/function PORT=8080
+
+EXPOSE ${PORT}
+WORKDIR ${WORKDIR}
+
+
+CMD ["python3", "/function-server/main.py"]

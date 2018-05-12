@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import sys
 import unittest
 
@@ -33,17 +34,17 @@ def lower(ctx, payload):
     return payload.lower()
 
 
-class Request():
+class Request:
     """
     Mock of a part of the falcon.Request class
     """
+
     def __init__(self, content_length=0, stream=None):
         self.content_length = content_length
         self.stream = stream
 
 
 class TestMainMethods(unittest.TestCase):
-
 
     def test_read_logs_valid(self):
         text_io = io.StringIO()
@@ -53,19 +54,17 @@ class TestMainMethods(unittest.TestCase):
 
         self.assertEqual(["line 1", "line 2"], logs)
 
-
     def test_read_logs_empty(self):
         text_io = io.StringIO()
         logs = main.read_logs(text_io)
 
         self.assertEqual(0, len(logs))
 
-
     def test_get_msg_valid(self):
         m = "{\"context\": null, \"payload\": {\"name\": \"Jon\", \"place\": \"Winterfell\"}}"
         req_stream = io.StringIO(m)
         req = Request(content_length=len(m), stream=req_stream)
-        
+
         msg = main.get_msg(req)
 
         self.assertIn('context', msg)
@@ -73,29 +72,26 @@ class TestMainMethods(unittest.TestCase):
         self.assertIn('payload', msg)
         self.assertEqual({"name": "Jon", "place": "Winterfell"}, msg['payload'])
 
-
     def test_get_msg_empty(self):
         msg = main.get_msg(Request())
 
         self.assertIsNone(msg)
 
-
     def test_process_msg_valid(self):
         msg = {'context': None, 'payload': {"name": "Jon", "place": "Winterfell"}}
         body = main.process_msg(msg, hello)
-        
+
         r = json.loads(body)
 
-        self.assertEqual("Hello, Jon from Winterfell", r['payload']);
-        self.assertEqual(0, len(r['context']['logs']['stdout']));
-        self.assertEqual(0, len(r['context']['logs']['stderr']));
+        self.assertEqual("Hello, Jon from Winterfell", r['payload'])
+        self.assertEqual(0, len(r['context']['logs']['stdout']))
+        self.assertEqual(0, len(r['context']['logs']['stderr']))
         self.assertIsNone(r['context']['error'])
-
 
     def test_process_msg_function_error(self):
         msg = {'context': None, 'payload': None}
         body = main.process_msg(msg, fail)
-        
+
         r = json.loads(body)
         err = r['context']['error']
 
@@ -104,7 +100,6 @@ class TestMainMethods(unittest.TestCase):
         self.assertEqual("oh no!", err['message'])
         self.assertEqual(err['stacktrace'], r['context']['logs']['stderr'])
         self.assertEqual(0, len(r['context']['logs']['stdout']))
-
 
     def test_process_msg_input_error(self):
         msg = {'context': None, 'payload': 1}
@@ -119,7 +114,6 @@ class TestMainMethods(unittest.TestCase):
         self.assertEqual(err['stacktrace'], r['context']['logs']['stderr'])
         self.assertEqual(0, len(r['context']['logs']['stdout']))
 
-
     def test_process_msg_logs(self):
         msg = {'context': None, 'payload': None}
         body = main.process_msg(msg, logger)
@@ -130,13 +124,18 @@ class TestMainMethods(unittest.TestCase):
         self.assertEqual(["stderr", "stderr2"], r['context']['logs']['stderr'])
         self.assertEqual(["stdout", "stdout2"], r['context']['logs']['stdout'])
 
+    def test_import_function(self):
+        # succeeds if run from the project root (or when it's in PYTHONPATH)
+        f = main.import_function(os.getcwd(), 'example.handler.dummy')
+
+        self.assertEqual("Hello!", f(None, "Hello!"))
 
     def test_process_req_invalid_json(self):
         m = "{"
         req_stream = io.StringIO(m)
         req = Request(content_length=len(m), stream=req_stream)
 
-        body = main.process_req(req)
+        body = main.process_req(req, hello)
 
         r = json.loads(body)
         err = r['context']['error']
