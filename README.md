@@ -1,7 +1,7 @@
 # python3-base-image
 Python 3 language support for Dispatch
 
-Latest image [on Docker Hub](https://hub.docker.com/r/dispatchframework/python3-base/): `dispatchframework/python3-base:0.0.4`
+Latest image [on Docker Hub](https://hub.docker.com/r/dispatchframework/python3-base/): `dispatchframework/python3-base:0.0.5`
 
 ## Usage
 
@@ -11,7 +11,7 @@ You need a recent version of Dispatch [installed in your Kubernetes cluster, Dis
 
 To add the base-image to Dispatch:
 ```bash
-$ dispatch create base-image python3-base dispatchframework/python3-base:0.0.4
+$ dispatch create base-image python3-base dispatchframework/python3-base:0.0.5
 ```
 
 Make sure the base-image status is `READY` (it normally goes from `INITIALIZED` to `READY`):
@@ -98,3 +98,35 @@ $ dispatch exec --json --input '{"url": "http://dispatchframework.io"}' --wait h
     "tags": []
 }
 ```
+
+## Error Handling
+
+There are three types of errors that can be thrown when invoking a function:
+* `InputError`
+* `FunctionError`
+* `SystemError`
+
+`SystemError` represents an error in the Dispatch infrastructure. `InputError` represents an error in the input detected either early in the function itself or through input schema validation. `FunctionError` represents an error in the function logic or an output schema validation error.
+
+Functions themselves can either throw `InputError` or `FunctionError`
+
+### Input Validation
+
+For Python, the following exceptions thrown from the function are considered `InputError`:
+* **`ValueError`**
+* **`TypeError`**
+
+All other exceptions thrown from the function are considered `FunctionError`.
+
+To validate input in the function body:
+```python
+def lower(ctx, payload):
+    if type(payload) is not str:
+        raise TypeError("payload is not of type str")
+
+    return payload.lower()
+```
+
+### Note
+
+Since **`ValueError`** and **`TypeError`** are considered `InputError`, functions should not throw them unless explicitly thrown due to an input validation error. Functions should catch and handle them accordingly if they should not be classified as `InputError`. 

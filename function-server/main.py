@@ -10,6 +10,11 @@ import waitress
 from function import handler
 
 
+INPUT_ERROR = 'InputError'
+FUNCTION_ERROR = 'FunctionError'
+SYSTEM_ERROR = 'SystemError'
+
+
 class Health(object):
     @staticmethod
     def on_get(req, res):
@@ -31,7 +36,7 @@ def get_msg(req):
 def process_msg(msg, handle):
     r = None
     err = None
-    stacktrace = None
+    stacktrace = []
 
     stderr = io.StringIO()
     old_stderr = sys.stderr
@@ -43,10 +48,12 @@ def process_msg(msg, handle):
         sys.stderr = stderr
         sys.stdout = stdout
         r = handle(msg['context'], msg['payload'])
+    except (ValueError, TypeError) as e:
+        stacktrace = traceback.format_exc().splitlines()
+        err = {'type': INPUT_ERROR, 'message': str(e), 'stacktrace': stacktrace}
     except Exception as e:
-        err = e
-        stacktrace = traceback.format_exc().rstrip()
-        print(stacktrace, file=sys.stderr)
+        stacktrace = traceback.format_exc().splitlines()
+        err = {'type': FUNCTION_ERROR, 'message': str(e), 'stacktrace': stacktrace}
     finally:
         sys.stderr = old_stderr
         stderr.flush()
@@ -54,16 +61,22 @@ def process_msg(msg, handle):
         sys.stdout = old_stdout
         stdout.flush()
 
-        # Exception is not json-serializable, so have to serialize ourselves
-        if err is not None:
-            err = {'message': str(err), 'stacktrace': stacktrace, 'type': err.__class__.__name__}
+    return json.dumps({'context': {'error': err, 'logs': {'stdout': read_logs(stdout), 'stderr': read_logs(stderr) + stacktrace}}, 'payload': r}, ensure_ascii=False)
 
-    return json.dumps({'context': {'error': err, 'logs': {'stdout': read_logs(stdout), 'stderr': read_logs(stderr)}}, 'payload': r}, ensure_ascii=False)
+
+def process_req(req):
+    try:
+        msg = get_msg(req)
+    except Exception as e:
+        stacktrace = traceback.format_exc().splitlines()
+        err = {'type': SYSTEM_ERROR, 'message': str(e), 'stacktrace': stacktrace}
+        return json.dumps({'context': {'error': err, 'logs': {'stdout': [], 'stderr': stacktrace}}, 'payload': None}, ensure_ascii=False)
+
+    return process_msg(msg, handler.handle)
 
 
 def exec_function(req, res):
-    msg = get_msg(req)
-    res.body = process_msg(msg, handler.handle)
+    res.body = process_req(req)
 
 
 def signal_handler(signum, frame):

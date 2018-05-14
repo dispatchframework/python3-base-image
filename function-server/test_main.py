@@ -26,6 +26,13 @@ def logger(ctx, payload):
     print("stderr2", file=sys.stderr)
 
 
+def lower(ctx, payload):
+    if type(payload) is not str:
+        raise TypeError("payload is not of type str")
+
+    return payload.lower()
+
+
 class Request():
     """
     Mock of a part of the falcon.Request class
@@ -85,18 +92,31 @@ class TestMainMethods(unittest.TestCase):
         self.assertIsNone(r['context']['error'])
 
 
-    def test_process_msg_exception(self):
+    def test_process_msg_function_error(self):
         msg = {'context': None, 'payload': None}
         body = main.process_msg(msg, fail)
         
         r = json.loads(body)
         err = r['context']['error']
-        stderr = main.read_logs(io.StringIO(err['stacktrace']))
 
         self.assertIsNone(r['payload'])
-        self.assertEqual("ZeroDivisionError", err['type'])
+        self.assertEqual(main.FUNCTION_ERROR, err['type'])
         self.assertEqual("oh no!", err['message'])
-        self.assertEqual(stderr, r['context']['logs']['stderr'])
+        self.assertEqual(err['stacktrace'], r['context']['logs']['stderr'])
+        self.assertEqual(0, len(r['context']['logs']['stdout']))
+
+
+    def test_process_msg_input_error(self):
+        msg = {'context': None, 'payload': 1}
+        body = main.process_msg(msg, lower)
+
+        r = json.loads(body)
+        err = r['context']['error']
+
+        self.assertIsNone(r['payload'])
+        self.assertEqual(main.INPUT_ERROR, err['type'])
+        self.assertEqual("payload is not of type str", err['message'])
+        self.assertEqual(err['stacktrace'], r['context']['logs']['stderr'])
         self.assertEqual(0, len(r['context']['logs']['stdout']))
 
 
@@ -109,6 +129,23 @@ class TestMainMethods(unittest.TestCase):
         self.assertIsNone(r['context']['error'])
         self.assertEqual(["stderr", "stderr2"], r['context']['logs']['stderr'])
         self.assertEqual(["stdout", "stdout2"], r['context']['logs']['stdout'])
+
+
+    def test_process_req_invalid_json(self):
+        m = "{"
+        req_stream = io.StringIO(m)
+        req = Request(content_length=len(m), stream=req_stream)
+
+        body = main.process_req(req)
+
+        r = json.loads(body)
+        err = r['context']['error']
+
+        self.assertIsNone(r['payload'])
+        self.assertEqual(main.SYSTEM_ERROR, err['type'])
+        self.assertTrue(len(err['message']) > 0)
+        self.assertEqual(err['stacktrace'], r['context']['logs']['stderr'])
+        self.assertEqual(0, len(r['context']['logs']['stdout']))
 
 
 if __name__ == '__main__':
