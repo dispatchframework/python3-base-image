@@ -23,4 +23,4 @@ EXPOSE ${PORT}
 WORKDIR ${WORKDIR}
 
 
-CMD ["python3", "/function-server/main.py"]
+CMD python3 /function-server/main.py $(cat /tmp/handler)
