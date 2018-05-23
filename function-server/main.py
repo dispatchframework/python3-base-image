@@ -111,7 +111,7 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    f = import_function(os.getcwd(), os.environ.get('HANDLER'))
+    f = import_function(os.getcwd(), sys.argv[1])
 
     app = falcon.API()
     app.add_route('/healthz', Health())
