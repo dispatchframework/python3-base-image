@@ -1,10 +1,11 @@
+import importlib
 import io
 import json
 import os
 import sys
 import unittest
 
-import main
+main = importlib.import_module("function-server.main")
 
 
 def hello(ctx, payload):
@@ -32,6 +33,10 @@ def lower(ctx, payload):
         raise TypeError("payload is not of type str")
 
     return payload.lower()
+
+
+def bad_payload(ctx, payload):
+    return b"bytes"
 
 
 class Request:
@@ -129,6 +134,21 @@ class TestMainMethods(unittest.TestCase):
         f = main.import_function(os.getcwd(), 'example.handler.dummy')
 
         self.assertEqual("Hello!", f(None, "Hello!"))
+
+    def test_process_msg_non_serializable_json(self):
+        msg = {'context': None, 'payload': None}
+        body = main.process_msg(msg, bad_payload)
+
+        r = json.loads(body)
+        err = r['context']['error']
+
+        self.assertIsNone(r['payload'])
+        self.assertEqual(main.FUNCTION_ERROR, err['type'])
+        self.assertIn("not JSON serializable", err['message'])
+        self.assertTrue(len(err['stacktrace']) > 0)
+        self.assertTrue(len(r['context']['logs']['stderr']) > 0)
+        self.assertEqual(0, len(r['context']['logs']['stdout']))
+
 
     def test_process_req_invalid_json(self):
         m = "{"

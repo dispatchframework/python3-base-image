@@ -34,6 +34,7 @@ def get_msg(req):
 
 def process_msg(msg, handle):
     r = None
+    response = None
     err = None
     stacktrace = []
 
@@ -60,12 +61,27 @@ def process_msg(msg, handle):
         sys.stdout = old_stdout
         stdout.flush()
 
-    return json.dumps(
-        {'context': {'error': err,
-                     'logs': {'stdout': read_logs(stdout),
-                              'stderr': read_logs(stderr) + stacktrace}},
-         'payload': r},
-        ensure_ascii=False)
+    context = {'error': err, 
+               'logs': {'stdout': read_logs(stdout), 
+                        'stderr': read_logs(stderr) + stacktrace}}
+
+    try:
+        response = json.dumps({'context': context, 'payload': r}, ensure_ascii=False)
+    except TypeError as e:
+        # Non-json serializable payload
+        stacktrace = traceback.format_exc().splitlines()
+        err = {'type': FUNCTION_ERROR, 'message': str(e), 'stacktrace': stacktrace}
+        context['error'] = err
+        context['logs']['stderr'].extend(stacktrace)
+        response = json.dumps({'context': context, 'payload': None}, ensure_ascii=False)
+    except Exception as e:
+        stacktrace = traceback.format_exc().splitlines()
+        err = {'type': SYSTEM_ERROR, 'message': str(e), 'stacktrace': stacktrace}
+        context['error'] = err
+        context['logs']['stderr'].extend(stacktrace)
+        response = json.dumps({'context': context, 'payload': None}, ensure_ascii=False)
+
+    return response
 
 
 def process_req(req, f):
