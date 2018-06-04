@@ -15,3 +15,10 @@ RUN [ -z "${HANDLER}" ] && \
     filename=$(ls *.py) && \
     filename="${filename%.*}" && \
     { echo -n $filename; echo -n ".handle"; } > /tmp/handler || :
+
+# Validate function file and given handler
+WORKDIR /
+
+RUN python3 -m validator.validator ${WORKDIR} $(cat /tmp/handler) || (echo "Invalid function file or handler" >&2 && exit 1)
+
+WORKDIR ${WORKDIR}
