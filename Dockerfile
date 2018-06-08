@@ -11,6 +11,8 @@ LABEL io.dispatchframework.imageTemplate="${IMAGE_TEMPLATE}" \
 COPY image-template ${IMAGE_TEMPLATE}/
 COPY function-template ${FUNCTION_TEMPLATE}/
 
+COPY validator /validator/
+
 COPY function-server /function-server/
 RUN pip install -r /function-server/requirements.txt
 
