@@ -16,7 +16,6 @@ COPY validator /validator/
 COPY function-server /function-server/
 RUN pip install -r /function-server/requirements.txt
 
-
 ## Set WORKDIR and PORT, expose $PORT, cd to $WORKDIR
 
 ENV WORKDIR=/function PORT=8080
@@ -24,5 +23,7 @@ ENV WORKDIR=/function PORT=8080
 EXPOSE ${PORT}
 WORKDIR ${WORKDIR}
 
+# OpenFaaS readiness check depends on this file
+RUN touch /tmp/.lock
 
 CMD python3 /function-server/main.py $(cat /tmp/handler)

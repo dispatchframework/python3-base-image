@@ -1,7 +1,7 @@
 # python3-base-image
 Python 3 language support for Dispatch
 
-Latest image [on Docker Hub](https://hub.docker.com/r/dispatchframework/python3-base/): `dispatchframework/python3-base:0.0.8`
+Latest image [on Docker Hub](https://hub.docker.com/r/dispatchframework/python3-base/)
 
 ## Usage
 
@@ -11,7 +11,7 @@ You need a recent version of Dispatch [installed in your Kubernetes cluster, Dis
 
 To add the base-image to Dispatch:
 ```bash
-$ dispatch create base-image python3-base dispatchframework/python3-base:0.0.8
+$ dispatch create base-image python3-base dispatchframework/python3-base:<tag>
 ```
 
 Make sure the base-image status is `READY` (it normally goes from `INITIALIZED` to `READY`):
@@ -43,7 +43,7 @@ $ dispatch get image python3-mylibs
 
 Using the python3 base-image, you can create Dispatch functions from python source files. The file can require any libraries from the image (see above).
 
-The only requirement is: a function called **`handle`** must be defined that accepts 2 arguments (`context` and `payload`), for example:  
+The only requirement is: a function called **`handle`** must be defined that accepts 2 arguments (`context` and `payload`), for example:
 ```bash
 $ cat ./http.py
 ```
@@ -129,4 +129,4 @@ def lower(ctx, payload):
 
 ### Note
 
-Since **`ValueError`** and **`TypeError`** are considered `InputError`, functions should not throw them unless explicitly thrown due to an input validation error. Functions should catch and handle them accordingly if they should not be classified as `InputError`. 
+Since **`ValueError`** and **`TypeError`** are considered `InputError`, functions should not throw them unless explicitly thrown due to an input validation error. Functions should catch and handle them accordingly if they should not be classified as `InputError`.
