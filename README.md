@@ -45,7 +45,7 @@ Using the python3 base-image, you can create Dispatch functions from python sour
 
 The only requirement is: a function called **`handle`** must be defined that accepts 2 arguments (`context` and `payload`), for example:
 ```bash
-$ cat ./http.py
+$ cat ./http_func.py
 ```
 ```python
 import requests
@@ -57,7 +57,7 @@ def handle(context, payload):
 ```
 
 ```bash
-$ dispatch create function python3-mylibs http ./http.py
+$ dispatch create function http ./http_func.py --image=python3-mylibs --handler=http_func.handle
 ```
 
 Make sure the function status is `READY` (it normally goes from `INITIALIZED` to `READY`):
