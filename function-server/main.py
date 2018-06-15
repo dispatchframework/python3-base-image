@@ -54,8 +54,11 @@ def process_msg(msg, handle):
         sys.stdout = stdout
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(handle, msg['context'], msg['payload'])
-            timeout = msg['context'].get('timeout', None)
-            r = future.result(None if timeout == None or timeout == 0 else timeout / 1000)
+            if msg['context'] is None:
+                timeout = None
+            else:
+                timeout = msg['context'].get('timeout', None)
+            r = future.result(None if timeout is None or timeout == 0 else timeout / 1000)
     except (ValueError, TypeError) as e:
         stacktrace = traceback.format_exc().splitlines()
         err = {'type': INPUT_ERROR, 'message': str(e), 'stacktrace': stacktrace}
