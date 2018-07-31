@@ -130,3 +130,15 @@ def lower(ctx, payload):
 ### Note
 
 Since **`ValueError`** and **`TypeError`** are considered `InputError`, functions should not throw them unless explicitly thrown due to an input validation error. Functions should catch and handle them accordingly if they should not be classified as `InputError`.
+
+## Running Tests
+
+To run tests, ensure you have all the required dependencies:
+```bash
+pip install -r ./function-server/requirements.txt
+```
+
+Then run:
+```bash
+python3 -m unittest discover
+```
