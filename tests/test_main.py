@@ -48,6 +48,14 @@ class Request:
         self.content_length = content_length
         self.stream = stream
 
+class Response:
+    """
+    Mock of a part of the falcon.Response class
+    """
+
+    def __init__(self, status=0):
+        self.status = status
+
 
 class TestMainMethods(unittest.TestCase):
 
@@ -82,52 +90,40 @@ class TestMainMethods(unittest.TestCase):
 
         self.assertIsNone(msg)
 
-    def test_process_msg_valid(self):
-        msg = {'context': None, 'payload': {"name": "Jon", "place": "Winterfell"}}
-        body = main.process_msg(msg, hello)
+    def test_process_req_valid(self):
+        msg = "{\"context\": null, \"payload\": {\"name\": \"Jon\", \"place\": \"Winterfell\"}}"
+        req_stream = io.StringIO(msg)
+        req = Request(content_length=len(msg), stream=req_stream)
+        res = Response()
+        body = main.process_req(req, res, hello)
 
         r = json.loads(body)
 
-        self.assertEqual("Hello, Jon from Winterfell", r['payload'])
-        self.assertEqual(0, len(r['context']['logs']['stdout']))
-        self.assertEqual(0, len(r['context']['logs']['stderr']))
-        self.assertIsNone(r['context']['error'])
+        self.assertEqual("Hello, Jon from Winterfell", r)
 
-    def test_process_msg_function_error(self):
-        msg = {'context': None, 'payload': None}
-        body = main.process_msg(msg, fail)
+    def test_process_req_function_error(self):
+        msg = "{\"context\": null, \"payload\": null}"
+        req_stream = io.StringIO(msg)
+        req = Request(len(msg), req_stream)
+        res = Response()
+        body = main.process_req(req, res, fail)
 
-        r = json.loads(body)
-        err = r['context']['error']
+        err = json.loads(body)
 
-        self.assertIsNone(r['payload'])
         self.assertEqual(main.FUNCTION_ERROR, err['type'])
         self.assertEqual("oh no!", err['message'])
-        self.assertEqual(err['stacktrace'], r['context']['logs']['stderr'])
-        self.assertEqual(0, len(r['context']['logs']['stdout']))
 
-    def test_process_msg_input_error(self):
-        msg = {'context': None, 'payload': 1}
-        body = main.process_msg(msg, lower)
+    def test_process_req_input_error(self):
+        msg = "{\"context\": null, \"payload\": 1}"
+        req_stream = io.StringIO(msg)
+        req = Request(len(msg), req_stream)
+        res = Response()
+        body = main.process_req(req, res, lower)
 
-        r = json.loads(body)
-        err = r['context']['error']
+        err = json.loads(body)
 
-        self.assertIsNone(r['payload'])
         self.assertEqual(main.INPUT_ERROR, err['type'])
         self.assertEqual("payload is not of type str", err['message'])
-        self.assertEqual(err['stacktrace'], r['context']['logs']['stderr'])
-        self.assertEqual(0, len(r['context']['logs']['stdout']))
-
-    def test_process_msg_logs(self):
-        msg = {'context': None, 'payload': None}
-        body = main.process_msg(msg, logger)
-        r = json.loads(body)
-
-        self.assertIsNone(r['payload'])
-        self.assertIsNone(r['context']['error'])
-        self.assertEqual(["stderr", "stderr2"], r['context']['logs']['stderr'])
-        self.assertEqual(["stdout", "stdout2"], r['context']['logs']['stdout'])
 
     def test_import_function(self):
         # succeeds if run from the project root (or when it's in PYTHONPATH)
@@ -135,36 +131,32 @@ class TestMainMethods(unittest.TestCase):
 
         self.assertEqual("Hello!", f(None, "Hello!"))
 
-    def test_process_msg_non_serializable_json(self):
-        msg = {'context': None, 'payload': None}
-        body = main.process_msg(msg, bad_payload)
+    def test_process_req_non_serializable_json(self):
+        msg = "{\"context\": null, \"payload\": null}"
+        req_stream = io.StringIO(msg)
+        req = Request(content_length=len(msg), stream=req_stream)
+        res = Response()
+        body = main.process_req(req, res, bad_payload)
 
-        r = json.loads(body)
-        err = r['context']['error']
+        err = json.loads(body)
 
-        self.assertIsNone(r['payload'])
         self.assertEqual(main.FUNCTION_ERROR, err['type'])
         self.assertIn("not JSON serializable", err['message'])
         self.assertTrue(len(err['stacktrace']) > 0)
-        self.assertTrue(len(r['context']['logs']['stderr']) > 0)
-        self.assertEqual(0, len(r['context']['logs']['stdout']))
 
 
     def test_process_req_invalid_json(self):
         m = "{"
         req_stream = io.StringIO(m)
         req = Request(content_length=len(m), stream=req_stream)
+        res = Response()
 
-        body = main.process_req(req, hello)
+        body = main.process_req(req, res, hello) 
 
-        r = json.loads(body)
-        err = r['context']['error']
+        err = json.loads(body)
 
-        self.assertIsNone(r['payload'])
+        self.assertEqual('500 Internal Server Error', res.status)
         self.assertEqual(main.SYSTEM_ERROR, err['type'])
-        self.assertTrue(len(err['message']) > 0)
-        self.assertEqual(err['stacktrace'], r['context']['logs']['stderr'])
-        self.assertEqual(0, len(r['context']['logs']['stdout']))
 
 
 if __name__ == '__main__':
