@@ -19,7 +19,7 @@ RUN pip install -r /function-server/requirements.txt
 
 ## Set WORKDIR, PORT and SERVER_CMD, expose $PORT, cd to $WORKDIR
 
-ENV WORKDIR=/function PORT=8080 SERVERS=$servers FUNKY_VERSION=0.1.1
+ENV WORKDIR=/function PORT=8080 SERVERS=$servers FUNKY_VERSION=0.1.2
 
 EXPOSE ${PORT}
 WORKDIR ${WORKDIR}
