@@ -81,6 +81,8 @@ def import_function(wd, func_fqn):
 def exec_function(f):
     def handler(req, res):
         res.body = process_req(req, res, f)
+        sys.stdout.flush()
+        sys.stderr.flush()
 
     return handler
 
